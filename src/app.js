@@ -65,6 +65,7 @@ const corsOptionsDelegate = (req, callback) => {
 
 app.use(cors(corsOptionsDelegate));
 app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/admin-static', express.static(path.join(__dirname, 'public')));
 
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);

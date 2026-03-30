@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GrowSim Admin Dashboard</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #d1d5db;
+        --accent: #0f766e;
+        --danger: #b91c1c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(1400px 500px at 10% -20%, #d8f5ef 0%, transparent 60%),
+          radial-gradient(1200px 450px at 100% -10%, #dce8ff 0%, transparent 55%),
+          var(--bg);
+      }
+      .layout {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+      }
+      .stat {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .stat .label {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .stat .value {
+        margin-top: 6px;
+        font-size: 1.4rem;
+        font-weight: 700;
+      }
+      .filters {
+        display: grid;
+        grid-template-columns: 1fr repeat(4, minmax(100px, auto));
+        gap: 8px;
+      }
+      input, select, button, textarea {
+        font: inherit;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #fff;
+      }
+      button {
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        font-weight: 600;
+      }
+      button.danger {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
+      }
+      .users-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+      }
+      .users-table th, .users-table td {
+        border-bottom: 1px solid var(--border);
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .badge {
+        display: inline-block;
+        border: 1px solid #9ca3af;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        margin: 2px 4px 0 0;
+        background: #f9fafb;
+      }
+      .small {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .audit-list {
+        max-height: 260px;
+        overflow: auto;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .audit-list li {
+        border-bottom: 1px solid var(--border);
+        padding: 8px 0;
+      }
+      .error {
+        color: #991b1b;
+        min-height: 20px;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      @media (max-width: 980px) {
+        .filters { grid-template-columns: 1fr 1fr; }
+        .grid-2 { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <header class="topbar panel">
+        <h1>GrowSim Admin Dashboard</h1>
+        <div class="actions">
+          <button id="refresh-btn">Aktualisieren</button>
+          <button id="logout-btn" class="danger">Logout</button>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="stats" id="stats"></div>
+      </section>
+
+      <section class="panel">
+        <div class="filters">
+          <input id="search" placeholder="Suche (Name, Email, Username)" />
+          <select id="role-filter">
+            <option value="">Alle Rollen</option>
+            <option value="user">user</option>
+            <option value="tester">tester</option>
+            <option value="moderator">moderator</option>
+            <option value="admin">admin</option>
+          </select>
+          <select id="banned-filter">
+            <option value="">Banned: alle</option>
+            <option value="false">nicht gebannt</option>
+            <option value="true">gebannt</option>
+          </select>
+          <select id="limit-filter">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <button class="primary" id="filter-btn">Filtern</button>
+        </div>
+        <div class="error" id="error"></div>
+      </section>
+
+      <section class="panel">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Rolle</th>
+              <th>Status</th>
+              <th>Badges</th>
+              <th>Aktionen</th>
+            </tr>
+          </thead>
+          <tbody id="users-body"></tbody>
+        </table>
+        <div class="meta">
+          <div id="pagination-info" class="small"></div>
+          <div class="actions">
+            <button id="prev-page">Zurück</button>
+            <button id="next-page">Weiter</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid-2">
+        <div class="panel">
+          <h2 style="margin-top:0;">User Details</h2>
+          <div id="details" class="small">Noch kein User ausgewählt.</div>
+        </div>
+        <div class="panel">
+          <h2 style="margin-top:0;">Audit Log</h2>
+          <ul class="audit-list" id="audit-list"></ul>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const state = {
+        page: 1,
+        totalPages: 1,
+        selectedUserId: null
+      };
+
+      const statsEl = document.getElementById('stats');
+      const usersBodyEl = document.getElementById('users-body');
+      const detailsEl = document.getElementById('details');
+      const auditListEl = document.getElementById('audit-list');
+      const errorEl = document.getElementById('error');
+      const paginationInfoEl = document.getElementById('pagination-info');
+
+      async function request(url, options = {}) {
+        const response = await fetch(url, { credentials: 'include', ...options });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Request failed');
+        }
+        if (response.status === 204) return null;
+        return response.json();
+      }
+
+      function setError(message) {
+        errorEl.textContent = message || '';
+      }
+
+      function statCard(label, value) {
+        return `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+      }
+
+      async function loadStats() {
+        const stats = await request('/admin/stats/overview');
+        statsEl.innerHTML = [
+          statCard('Total Users', stats.totalUsers),
+          statCard('Neu heute', stats.newUsersToday),
+          statCard('Gebannt', stats.bannedUsers),
+          statCard('Admins', stats.adminUsers),
+          statCard('Tester', stats.testerUsers),
+          statCard('Aktiv (30d)', stats.activeUsers)
+        ].join('');
+      }
+
+      function userRow(user) {
+        const badges = (user.badges || []).map((badge) => `<span class="badge">${badge}</span>`).join('');
+        const bannedLabel = user.isBanned ? '<span class="badge" style="border-color:#ef4444;color:#991b1b;">BANNED</span>' : '<span class="badge">Aktiv</span>';
+        return `
+          <tr>
+            <td>
+              <div><strong>${user.displayName || '-'}</strong></div>
+              <div class="small">${user.email}</div>
+              <div class="small">${user.id}</div>
+            </td>
+            <td>${user.role}</td>
+            <td>${bannedLabel}</td>
+            <td>${badges || '<span class="small">Keine</span>'}</td>
+            <td>
+              <div class="actions">
+                <button data-action="open" data-id="${user.id}">Details</button>
+                <button data-action="ban-toggle" data-id="${user.id}" data-banned="${user.isBanned}">
+                  ${user.isBanned ? 'Entsperren' : 'Sperren'}
+                </button>
+                <button data-action="badge-add" data-id="${user.id}">Badge +</button>
+                <button data-action="badge-remove" data-id="${user.id}">Badge -</button>
+                <button data-action="role" data-id="${user.id}">Rolle</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      function readFilters() {
+        return {
+          search: document.getElementById('search').value.trim(),
+          role: document.getElementById('role-filter').value,
+          banned: document.getElementById('banned-filter').value,
+          limit: document.getElementById('limit-filter').value
+        };
+      }
+
+      async function loadUsers() {
+        const filters = readFilters();
+        const params = new URLSearchParams({ page: String(state.page), limit: filters.limit });
+        if (filters.search) params.set('search', filters.search);
+        if (filters.role) params.set('role', filters.role);
+        if (filters.banned) params.set('banned', filters.banned);
+
+        const payload = await request(`/admin/users?${params.toString()}`);
+        const users = payload.data || [];
+
+        usersBodyEl.innerHTML = users.map(userRow).join('') || '<tr><td colspan="5" class="small">Keine User gefunden.</td></tr>';
+
+        state.totalPages = payload.meta?.totalPages || 1;
+        paginationInfoEl.textContent = `Seite ${payload.meta?.page || 1} / ${state.totalPages} | Total: ${payload.meta?.total || 0}`;
+      }
+
+      function renderDetails(user) {
+        const badges = (user.badges || []).map((badge) => `<span class="badge">${badge}</span>`).join('') || '<span class="small">Keine</span>';
+        detailsEl.innerHTML = `
+          <div><strong>${user.displayName || '-'}</strong> (${user.role})</div>
+          <div class="small">${user.email}</div>
+          <div class="small">ID: ${user.id}</div>
+          <div class="small">Created: ${new Date(user.createdAt).toLocaleString()}</div>
+          <div class="small">Last Login: ${user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '-'}</div>
+          <div style="margin:8px 0;">${badges}</div>
+          <label class="small" for="notes">Admin Notes</label>
+          <textarea id="notes" rows="5">${user.adminNotes || ''}</textarea>
+          <div class="actions" style="margin-top:8px;">
+            <button class="primary" id="save-notes-btn">Notes speichern</button>
+          </div>
+        `;
+
+        const saveNotesButton = document.getElementById('save-notes-btn');
+        saveNotesButton?.addEventListener('click', async () => {
+          try {
+            const adminNotes = document.getElementById('notes').value;
+            await request(`/admin/users/${user.id}/notes`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ adminNotes })
+            });
+            await refreshAll();
+          } catch (error) {
+            setError(error.message);
+          }
+        });
+      }
+
+      async function loadUserDetails(userId) {
+        const payload = await request(`/admin/users/${userId}`);
+        state.selectedUserId = userId;
+        renderDetails(payload.user);
+      }
+
+      async function loadAudit() {
+        const payload = await request('/admin/audit-logs?limit=50');
+        auditListEl.innerHTML = (payload.data || [])
+          .map((entry) => {
+            const actor = entry.actor?.email || 'unknown';
+            const target = entry.target?.email || 'unknown';
+            return `
+              <li>
+                <div><strong>${entry.action}</strong></div>
+                <div class="small">${actor} -> ${target}</div>
+                <div class="small">${new Date(entry.createdAt).toLocaleString()}</div>
+              </li>
+            `;
+          })
+          .join('') || '<li class="small">Keine Logs.</li>';
+      }
+
+      async function refreshAll() {
+        setError('');
+        await Promise.all([loadStats(), loadUsers(), loadAudit()]);
+        if (state.selectedUserId) {
+          await loadUserDetails(state.selectedUserId);
+        }
+      }
+
+      usersBodyEl.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const action = button.dataset.action;
+        const userId = button.dataset.id;
+
+        try {
+          if (action === 'open') {
+            await loadUserDetails(userId);
+            return;
+          }
+
+          if (action === 'ban-toggle') {
+            const isBanned = button.dataset.banned !== 'true';
+            await request(`/admin/users/${userId}/ban`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ isBanned })
+            });
+            await refreshAll();
+            return;
+          }
+
+          if (action === 'badge-add' || action === 'badge-remove') {
+            const badge = window.prompt('Badge Name');
+            if (!badge) return;
+            await request(`/admin/users/${userId}/badges`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: action === 'badge-add' ? 'add' : 'remove',
+                badge
+              })
+            });
+            await refreshAll();
+            return;
+          }
+
+          if (action === 'role') {
+            const role = window.prompt('Neue Rolle: user | tester | moderator | admin');
+            if (!role) return;
+            await request(`/admin/users/${userId}/role`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ role: role.trim() })
+            });
+            await refreshAll();
+          }
+        } catch (error) {
+          setError(error.message);
+        }
+      });
+
+      document.getElementById('filter-btn').addEventListener('click', async () => {
+        state.page = 1;
+        try {
+          await loadUsers();
+        } catch (error) {
+          setError(error.message);
+        }
+      });
+
+      document.getElementById('prev-page').addEventListener('click', async () => {
+        if (state.page <= 1) return;
+        state.page -= 1;
+        try {
+          await loadUsers();
+        } catch (error) {
+          setError(error.message);
+        }
+      });
+
+      document.getElementById('next-page').addEventListener('click', async () => {
+        if (state.page >= state.totalPages) return;
+        state.page += 1;
+        try {
+          await loadUsers();
+        } catch (error) {
+          setError(error.message);
+        }
+      });
+
+      document.getElementById('refresh-btn').addEventListener('click', async () => {
+        try {
+          await refreshAll();
+        } catch (error) {
+          setError(error.message);
+        }
+      });
+
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        try {
+          await request('/admin/logout', { method: 'POST' });
+        } catch {}
+        window.location.href = '/admin/login';
+      });
+
+      refreshAll().catch((error) => {
+        setError(error.message);
+      });
+    </script>
+  </body>
+</html>

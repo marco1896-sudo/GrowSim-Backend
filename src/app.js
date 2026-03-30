@@ -8,6 +8,7 @@ import { logger } from './config/logger.js';
 import authRoutes from './routes/authRoutes.js';
 import saveRoutes from './routes/saveRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { requestContext } from './middleware/requestContext.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
@@ -63,6 +64,7 @@ app.use(cors(corsOptionsDelegate));
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/save', saveRoutes);
+app.use('/admin', adminRoutes);
 
 app.get('/', (_req, res) => {
   res.json({ ok: true, service: env.serviceName });

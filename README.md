@@ -20,6 +20,11 @@ Dieser Ordner ist bereits fuer die Auslagerung in ein separates Repo vorbereitet
 - Save-System:
   - `GET /api/save?slot=main`
   - `POST /api/save`
+- Internes Admin-System:
+  - `GET /admin` (Dashboard, nur Admin)
+  - `GET /admin/users`, `PATCH /admin/users/:id/*`
+  - `GET /admin/stats/overview`
+  - `GET /admin/audit-logs`
 - ENV-basierte Konfiguration
 - CORS-Konfiguration ueber ENV
 - Strukturierte Logs (JSON)
@@ -94,6 +99,17 @@ Pflicht:
 Wichtig:
 - `CORS_ORIGINS` (Komma-separierte erlaubte Frontend-Origins)
 - `NODE_ENV=production` fuer Deployment
+
+Optional fuer den ersten Admin:
+- `ADMIN_SEED_EMAIL`
+- `ADMIN_SEED_PASSWORD`
+- `ADMIN_SEED_DISPLAY_NAME`
+
+Admin seed ausfuehren:
+
+```bash
+npm run seed:admin
+```
 
 ## Healthcheck
 

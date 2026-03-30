@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body, query } from 'express-validator';
 import { getSave, upsertSave } from '../controllers/saveController.js';
-import { authRequired } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 
 const slotRule = /^[a-zA-Z0-9_-]{1,50}$/;
@@ -19,7 +19,7 @@ const router = Router();
 
 router.get(
   '/',
-  authRequired,
+  requireAuth,
   query('slot').optional().isString().matches(slotRule).withMessage(slotValidationMessage),
   validateRequest,
   getSave
@@ -27,7 +27,7 @@ router.get(
 
 router.post(
   '/',
-  authRequired,
+  requireAuth,
   body('state')
     .exists()
     .withMessage('state is required')

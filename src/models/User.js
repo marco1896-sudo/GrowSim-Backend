@@ -19,6 +19,31 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: 80,
       default: ''
+    },
+    role: {
+      type: String,
+      enum: ['user', 'tester', 'moderator', 'admin'],
+      default: 'user',
+      index: true
+    },
+    isBanned: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    badges: {
+      type: [String],
+      default: []
+    },
+    adminNotes: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: ''
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

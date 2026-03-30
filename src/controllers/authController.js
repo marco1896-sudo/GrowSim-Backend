@@ -16,6 +16,10 @@ function mapUser(user) {
     id: user._id,
     email: user.email,
     displayName: user.displayName,
+    role: user.role,
+    isBanned: user.isBanned,
+    badges: Array.isArray(user.badges) ? user.badges : [],
+    lastLoginAt: user.lastLoginAt || null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
   };
@@ -52,6 +56,9 @@ export async function login(req, res, next) {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return next(httpError(401, 'Invalid email or password'));
 
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = createToken(user._id);
     return res.json({ token, user: mapUser(user) });
   } catch (err) {
@@ -61,7 +68,9 @@ export async function login(req, res, next) {
 
 export async function me(req, res, next) {
   try {
-    const user = await User.findById(req.auth.userId).select('_id email displayName createdAt updatedAt');
+    const user = await User.findById(req.auth.userId).select(
+      '_id email displayName role isBanned badges lastLoginAt createdAt updatedAt'
+    );
     if (!user) return next(httpError(404, 'User not found'));
 
     return res.json({ user: mapUser(user) });

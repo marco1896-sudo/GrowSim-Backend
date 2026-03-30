@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
@@ -13,6 +15,8 @@ import { requestContext } from './middleware/requestContext.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 if (env.trustProxy) {
   app.set('trust proxy', 1);
@@ -60,6 +64,7 @@ const corsOptionsDelegate = (req, callback) => {
 };
 
 app.use(cors(corsOptionsDelegate));
+app.use('/static', express.static(path.join(__dirname, 'public')));
 
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);

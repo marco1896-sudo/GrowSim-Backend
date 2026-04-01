@@ -33,6 +33,9 @@ router.get(
   query('search').optional().isString(),
   query('role').optional().isIn(['user', 'tester', 'moderator', 'admin']),
   query('banned').optional().isIn(['true', 'false']),
+  query('badge').optional().isString().trim().notEmpty().isLength({ max: 100 }),
+  query('sortBy').optional().isIn(['createdAt', 'lastLoginAt', 'role']),
+  query('sortOrder').optional().isIn(['asc', 'desc']),
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   validateRequest,
@@ -77,6 +80,14 @@ router.patch(
   validateRequest,
   updateAdminUserNotes
 );
-router.get('/audit-logs', requireAuth, requireAdmin, query('limit').optional().isInt({ min: 1, max: 200 }), validateRequest, listAdminAuditLogs);
+router.get(
+  '/audit-logs',
+  requireAuth,
+  requireAdmin,
+  query('limit').optional().isInt({ min: 1, max: 200 }),
+  query('targetUserId').optional().isMongoId(),
+  validateRequest,
+  listAdminAuditLogs
+);
 
 export default router;

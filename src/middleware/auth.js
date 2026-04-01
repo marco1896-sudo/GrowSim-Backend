@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { httpError } from '../utils/httpError.js';
 import { User } from '../models/User.js';
+import { normalizeUserRole } from '../utils/userRole.js';
 
 function parseCookieHeader(cookieHeader = '') {
   return cookieHeader
@@ -60,7 +61,7 @@ export async function requireAuth(req, _res, next) {
 
     req.auth = {
       userId: String(user._id),
-      role: user.role,
+      role: normalizeUserRole(user.role),
       user
     };
 
@@ -71,7 +72,7 @@ export async function requireAuth(req, _res, next) {
 }
 
 export function requireAdmin(req, _res, next) {
-  if (req.auth?.role !== 'admin') {
+  if (normalizeUserRole(req.auth?.role) !== 'admin') {
     return next(httpError(403, 'Admin access required'));
   }
 

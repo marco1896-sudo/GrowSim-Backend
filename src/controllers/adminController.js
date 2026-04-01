@@ -6,8 +6,8 @@ import { User } from '../models/User.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { env } from '../config/env.js';
 import { httpError } from '../utils/httpError.js';
+import { USER_ROLES, normalizeUserRole, legacyUserRoleFilter } from '../utils/userRole.js';
 
-const ROLES = ['user', 'tester', 'moderator', 'admin'];
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ADMIN_COOKIE_NAME = 'admin_token';
@@ -17,7 +17,7 @@ function mapUser(user) {
     id: user._id,
     email: user.email,
     displayName: user.displayName,
-    role: user.role,
+    role: normalizeUserRole(user.role),
     isBanned: user.isBanned,
     badges: Array.isArray(user.badges) ? user.badges : [],
     adminNotes: user.adminNotes || '',
@@ -36,12 +36,99 @@ async function createAuditLog({ actorUserId, action, targetUserId, metadata = {}
   });
 }
 
+async function normalizeLegacyUserRoles() {
+  await User.updateMany(
+    {
+      $or: legacyUserRoleFilter()
+    },
+    {
+      $set: { role: 'user' }
+    }
+  );
+}
+
 function resolvePagination(query) {
   const pageRaw = Number(query.page ?? 1);
   const limitRaw = Number(query.limit ?? 25);
   const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 100) : 25;
   return { page, limit, skip: (page - 1) * limit };
+}
+
+function buildRoleFilter(role) {
+  if (!role || !USER_ROLES.includes(role)) return null;
+
+  if (role === 'user') {
+    return {
+      $or: [{ role: 'user' }, ...legacyUserRoleFilter()]
+    };
+  }
+
+  return { role };
+}
+
+function applyFilterClause(filter, clause) {
+  if (!clause) return filter;
+
+  if (!filter.$and) {
+    filter.$and = [];
+  }
+
+  filter.$and.push(clause);
+  return filter;
+}
+
+function resolveUserSort(query) {
+  const sortBy = ['createdAt', 'lastLoginAt', 'role'].includes(query.sortBy) ? query.sortBy : 'createdAt';
+  const sortOrder = query.sortOrder === 'asc' ? 1 : -1;
+
+  if (sortBy === 'role') {
+    return {
+      sortBy,
+      sortOrder: sortOrder === 1 ? 'asc' : 'desc',
+      mongoSort: {
+        role: sortOrder,
+        createdAt: -1
+      }
+    };
+  }
+
+  return {
+    sortBy,
+    sortOrder: sortOrder === 1 ? 'asc' : 'desc',
+    mongoSort: {
+      [sortBy]: sortOrder,
+      createdAt: -1
+    }
+  };
+}
+
+async function getRecentAuditLogsForUser(targetUserId, limit = 10) {
+  const entries = await AuditLog.find({ targetUserId })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate({ path: 'actorUserId', select: '_id email displayName role' })
+    .populate({ path: 'targetUserId', select: '_id email displayName role' })
+    .lean();
+
+  return entries.map((entry) => ({
+    id: entry._id,
+    actor: entry.actorUserId
+      ? {
+          ...entry.actorUserId,
+          role: normalizeUserRole(entry.actorUserId.role)
+        }
+      : null,
+    action: entry.action,
+    target: entry.targetUserId
+      ? {
+          ...entry.targetUserId,
+          role: normalizeUserRole(entry.targetUserId.role)
+        }
+      : null,
+    metadata: entry.metadata ?? {},
+    createdAt: entry.createdAt
+  }));
 }
 
 export async function createAdminSession(req, res, next) {
@@ -51,10 +138,12 @@ export async function createAdminSession(req, res, next) {
 
     if (!payload?.sub) return next(httpError(401, 'Invalid token payload'));
 
+    await normalizeLegacyUserRoles();
+
     const user = await User.findById(payload.sub).select('_id role isBanned').lean();
     if (!user) return next(httpError(401, 'User no longer exists'));
     if (user.isBanned) return next(httpError(403, 'Your account is banned'));
-    if (user.role !== 'admin') return next(httpError(403, 'Admin access required'));
+    if (normalizeUserRole(user.role) !== 'admin') return next(httpError(403, 'Admin access required'));
 
     res.cookie(ADMIN_COOKIE_NAME, token, {
       httpOnly: true,
@@ -85,6 +174,8 @@ export function getAdminPage(_req, res) {
 
 export async function getAdminOverviewStats(_req, res, next) {
   try {
+    await normalizeLegacyUserRoles();
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
@@ -105,7 +196,8 @@ export async function getAdminOverviewStats(_req, res, next) {
       bannedUsers,
       adminUsers,
       testerUsers,
-      activeUsers
+      activeUsers,
+      activeUsersDefinitionDays: 30
     });
   } catch (err) {
     return next(err);
@@ -114,9 +206,12 @@ export async function getAdminOverviewStats(_req, res, next) {
 
 export async function listAdminUsers(req, res, next) {
   try {
-    const { search, role } = req.query;
+    await normalizeLegacyUserRoles();
+
+    const { search, role, badge } = req.query;
     const banned = req.query.banned;
     const { page, limit, skip } = resolvePagination(req.query);
+    const { sortBy, sortOrder, mongoSort } = resolveUserSort(req.query);
 
     const filter = {};
 
@@ -124,23 +219,28 @@ export async function listAdminUsers(req, res, next) {
       const safeSearch = String(search).trim();
       if (safeSearch) {
         const regex = new RegExp(safeSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [{ email: regex }, { displayName: regex }, { username: regex }];
+        applyFilterClause(filter, { $or: [{ email: regex }, { displayName: regex }, { username: regex }] });
       }
     }
 
-    if (role && ROLES.includes(role)) {
-      filter.role = role;
+    const roleFilter = buildRoleFilter(role);
+    if (roleFilter) {
+      applyFilterClause(filter, roleFilter);
     }
 
     if (banned === 'true' || banned === 'false') {
-      filter.isBanned = banned === 'true';
+      applyFilterClause(filter, { isBanned: banned === 'true' });
+    }
+
+    if (badge) {
+      applyFilterClause(filter, { badges: String(badge).trim() });
     }
 
     const [total, users] = await Promise.all([
       User.countDocuments(filter),
       User.find(filter)
         .select('_id email displayName role isBanned badges adminNotes lastLoginAt createdAt updatedAt')
-        .sort({ createdAt: -1 })
+        .sort(mongoSort)
         .skip(skip)
         .limit(limit)
         .lean()
@@ -152,7 +252,9 @@ export async function listAdminUsers(req, res, next) {
         page,
         limit,
         total,
-        totalPages: Math.max(1, Math.ceil(total / limit))
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        sortBy,
+        sortOrder
       }
     });
   } catch (err) {
@@ -165,10 +267,13 @@ export async function getAdminUserById(req, res, next) {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return next(httpError(400, 'Invalid user id'));
 
-    const user = await User.findById(id).select('_id email displayName role isBanned badges adminNotes lastLoginAt createdAt updatedAt').lean();
+    const [user, recentAuditLogs] = await Promise.all([
+      User.findById(id).select('_id email displayName role isBanned badges adminNotes lastLoginAt createdAt updatedAt').lean(),
+      getRecentAuditLogsForUser(id, 12)
+    ]);
     if (!user) return next(httpError(404, 'User not found'));
 
-    return res.json({ user: mapUser(user) });
+    return res.json({ user: mapUser(user), recentAuditLogs });
   } catch (err) {
     return next(err);
   }
@@ -179,12 +284,12 @@ export async function updateAdminUserRole(req, res, next) {
     const { id } = req.params;
     const { role } = req.body;
     if (!mongoose.Types.ObjectId.isValid(id)) return next(httpError(400, 'Invalid user id'));
-    if (!ROLES.includes(role)) return next(httpError(400, 'Invalid role'));
+    if (!USER_ROLES.includes(role)) return next(httpError(400, 'Invalid role'));
 
     const user = await User.findById(id);
     if (!user) return next(httpError(404, 'User not found'));
 
-    const oldRole = user.role;
+    const oldRole = normalizeUserRole(user.role);
     user.role = role;
     await user.save();
 
@@ -301,8 +406,14 @@ export async function listAdminAuditLogs(req, res, next) {
   try {
     const limitRaw = Number(req.query.limit ?? 50);
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 200) : 50;
+    const targetUserId = req.query.targetUserId;
 
-    const logs = await AuditLog.find({})
+    const filter = {};
+    if (targetUserId) {
+      filter.targetUserId = targetUserId;
+    }
+
+    const logs = await AuditLog.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate({ path: 'actorUserId', select: '_id email displayName role' })
@@ -312,9 +423,19 @@ export async function listAdminAuditLogs(req, res, next) {
     return res.json({
       data: logs.map((entry) => ({
         id: entry._id,
-        actor: entry.actorUserId,
+        actor: entry.actorUserId
+          ? {
+              ...entry.actorUserId,
+              role: normalizeUserRole(entry.actorUserId.role)
+            }
+          : null,
         action: entry.action,
-        target: entry.targetUserId,
+        target: entry.targetUserId
+          ? {
+              ...entry.targetUserId,
+              role: normalizeUserRole(entry.targetUserId.role)
+            }
+          : null,
         metadata: entry.metadata ?? {},
         createdAt: entry.createdAt
       }))

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { env } from '../config/env.js';
 import { httpError } from '../utils/httpError.js';
+import { normalizeUserRole } from '../utils/userRole.js';
 
 function createToken(userId) {
   return jwt.sign({}, env.jwtSecret, {
@@ -16,7 +17,7 @@ function mapUser(user) {
     id: user._id,
     email: user.email,
     displayName: user.displayName,
-    role: user.role,
+    role: normalizeUserRole(user.role),
     isBanned: user.isBanned,
     badges: Array.isArray(user.badges) ? user.badges : [],
     lastLoginAt: user.lastLoginAt || null,
@@ -56,6 +57,7 @@ export async function login(req, res, next) {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return next(httpError(401, 'Invalid email or password'));
 
+    user.role = normalizeUserRole(user.role);
     user.lastLoginAt = new Date();
     await user.save();
 

@@ -12,6 +12,7 @@ import saveRoutes from './routes/saveRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { requestContext } from './middleware/requestContext.js';
+import { applyPwaEntryCachePolicy, applyStaticCachePolicy } from './middleware/cachePolicy.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -64,8 +65,16 @@ const corsOptionsDelegate = (req, callback) => {
 };
 
 app.use(cors(corsOptionsDelegate));
-app.use('/static', express.static(path.join(__dirname, 'public')));
-app.use('/admin-static', express.static(path.join(__dirname, 'public')));
+app.use(applyPwaEntryCachePolicy);
+
+const staticMiddlewareOptions = {
+  setHeaders(res, filePath) {
+    applyStaticCachePolicy(res, filePath);
+  }
+};
+
+app.use('/static', express.static(path.join(__dirname, 'public'), staticMiddlewareOptions));
+app.use('/admin-static', express.static(path.join(__dirname, 'public'), staticMiddlewareOptions));
 
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);

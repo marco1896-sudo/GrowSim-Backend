@@ -165,11 +165,19 @@ export function clearAdminSession(_req, res) {
 }
 
 export function getAdminLoginPage(_req, res) {
-  return res.sendFile(path.resolve(__dirname, '../views/admin-login.html'));
+  return res.sendFile(path.resolve(__dirname, '../views/admin-login.html'), {
+    headers: {
+      'Cache-Control': 'no-cache, must-revalidate'
+    }
+  });
 }
 
 export function getAdminPage(_req, res) {
-  return res.sendFile(path.resolve(__dirname, '../views/admin.html'));
+  return res.sendFile(path.resolve(__dirname, '../views/admin.html'), {
+    headers: {
+      'Cache-Control': 'no-cache, must-revalidate'
+    }
+  });
 }
 
 export async function getAdminOverviewStats(_req, res, next) {

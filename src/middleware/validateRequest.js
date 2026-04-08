@@ -7,13 +7,14 @@ export function validateRequest(req, _res, next) {
 
   return next(
     httpError(
-      400,
+      422,
       'Validation failed',
       result.array().map((entry) => ({
         field: entry.path,
         message: entry.msg,
         location: entry.location
-      }))
+      })),
+      'validation_failed'
     )
   );
 }

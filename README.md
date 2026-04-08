@@ -20,6 +20,10 @@ Dieser Ordner ist bereits fuer die Auslagerung in ein separates Repo vorbereitet
 - Save-System:
   - `GET /api/save?slot=main`
   - `POST /api/save`
+- Harvest-System:
+  - `POST /api/v1/run-sessions`
+  - `POST /api/v1/runs/submit`
+  - `GET /api/v1/runs/:submissionId`
 - Internes Admin-System:
   - `GET /admin` (Dashboard, nur Admin)
   - `GET /admin/users`, `PATCH /admin/users/:id/*`
@@ -30,6 +34,24 @@ Dieser Ordner ist bereits fuer die Auslagerung in ein separates Repo vorbereitet
 - Strukturierte Logs (JSON)
 - Fehlerhandling mit `requestId`
 - Graceful Shutdown (SIGINT/SIGTERM)
+
+## Harvest Foundation
+
+Das Harvest-Backend ist die authoritative Wahrheit fuer kompetitive Harvest-Ergebnisse.
+Frontend-Forecasts bleiben lokale UX-Vorschau und werden serverseitig nur als Inputsignal plausibilisiert.
+
+Aktuell implementiert:
+- Run-Session-Erstellung mit Ownership-Bindung
+- Run-Submission mit erster serverseitiger Verification
+- Verification-Status: `submitted`, `provisional`, `verified`, `rejected`, `under_review`
+- Authoritative Harvest-Scores fuer `harvestScore`, `yieldScore`, `qualityScore`, `stabilityScore`, `efficiencyScore`, `challengeScore`
+- Konsistente Fehlercodes fuer Harvest-Requests
+
+Bewusst noch nicht implementiert:
+- Leaderboards
+- Rewards
+- Seasons
+- Social/Friends-Features
 
 ## Standalone Repo Transfer
 

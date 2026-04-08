@@ -40,23 +40,23 @@ export async function requireAuth(req, _res, next) {
   const token = extractToken(req);
 
   if (!token) {
-    return next(httpError(401, 'Missing or invalid Authorization header'));
+    return next(httpError(401, 'Missing or invalid Authorization header', null, 'unauthorized'));
   }
 
   try {
     const payload = jwt.verify(token, env.jwtSecret, { algorithms: ['HS256'] });
 
     if (!payload?.sub) {
-      return next(httpError(401, 'Invalid token payload'));
+      return next(httpError(401, 'Invalid token payload', null, 'unauthorized'));
     }
 
     const user = await User.findById(payload.sub).select('_id email displayName role isBanned badges adminNotes lastLoginAt createdAt updatedAt').lean();
     if (!user) {
-      return next(httpError(401, 'User no longer exists'));
+      return next(httpError(401, 'User no longer exists', null, 'unauthorized'));
     }
 
     if (user.isBanned) {
-      return next(httpError(403, 'Your account is banned'));
+      return next(httpError(403, 'Your account is banned', null, 'forbidden'));
     }
 
     req.auth = {
@@ -67,13 +67,13 @@ export async function requireAuth(req, _res, next) {
 
     return next();
   } catch {
-    return next(httpError(401, 'Invalid or expired token'));
+    return next(httpError(401, 'Invalid or expired token', null, 'unauthorized'));
   }
 }
 
 export function requireAdmin(req, _res, next) {
   if (normalizeUserRole(req.auth?.role) !== 'admin') {
-    return next(httpError(403, 'Admin access required'));
+    return next(httpError(403, 'Admin access required', null, 'forbidden'));
   }
 
   return next();

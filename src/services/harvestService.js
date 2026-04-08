@@ -4,6 +4,8 @@ import { RunVerification } from '../models/RunVerification.js';
 import { createPrefixedId } from '../utils/idGenerator.js';
 import { computeHarvestResult, summarizeTelemetry } from '../utils/harvestScoring.js';
 import { httpError } from '../utils/httpError.js';
+import { User } from '../models/User.js';
+import { materializeVerifiedLeaderboardEntries } from './leaderboardService.js';
 
 const MAX_RUN_DURATION_MS = 1000 * 60 * 60 * 24 * 7;
 const MAX_FUTURE_SKEW_MS = 1000 * 60 * 5;
@@ -132,7 +134,7 @@ function toSubmissionResponse(submission, verification) {
   return {
     submissionId: submission.submissionId,
     status: verification.verificationStatus,
-    leaderboardEligible: false,
+    leaderboardEligible: verification.verificationStatus === 'verified',
     result: verification.verifiedResult || verification.provisionalResult || null,
     anomalyFlags: verification.anomalyFlags || [],
     reviewNeeded: Boolean(verification.reviewNeeded),
@@ -197,6 +199,15 @@ export async function submitRun({ userId, payload }) {
     reviewNeeded: verificationDecision.reviewNeeded,
     validationNotes: verificationDecision.validationNotes
   });
+
+  if (verificationDecision.status === 'verified') {
+    const user = await User.findById(userId).select('_id email displayName').lean();
+    await materializeVerifiedLeaderboardEntries({
+      submission,
+      verification,
+      user
+    });
+  }
 
   session.status = verificationDecision.status === 'verified' ? 'verified' : verificationDecision.status === 'rejected' ? 'rejected' : verificationDecision.status === 'under_review' ? 'under_review' : 'submitted';
   await session.save();

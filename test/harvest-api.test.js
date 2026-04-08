@@ -6,12 +6,13 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret-key-with-at-least-32chars';
 process.env.MONGODB_URI = 'mongodb://localhost:27017/growsim-test';
 
-const [{ default: app }, { User }, { RunSession }, { RunSubmission }, { RunVerification }] = await Promise.all([
+const [{ default: app }, { User }, { RunSession }, { RunSubmission }, { RunVerification }, { LeaderboardEntry }] = await Promise.all([
   import('../src/app.js'),
   import('../src/models/User.js'),
   import('../src/models/RunSession.js'),
   import('../src/models/RunSubmission.js'),
-  import('../src/models/RunVerification.js')
+  import('../src/models/RunVerification.js'),
+  import('../src/models/LeaderboardEntry.js')
 ]);
 
 const authUser = {
@@ -156,6 +157,12 @@ test('POST /api/v1/runs/submit accepts a valid submission and returns an authori
     createdAt: new Date('2026-04-08T08:15:00.000Z'),
     updatedAt: new Date('2026-04-08T08:15:05.000Z')
   }));
+  mock.method(LeaderboardEntry, 'findOne', async () => null);
+  mock.method(LeaderboardEntry, 'create', async (input) => input);
+  mock.method(LeaderboardEntry, 'find', () => ({
+    lean: async () => []
+  }));
+  mock.method(LeaderboardEntry, 'updateOne', async () => ({ acknowledged: true }));
 
   const { response, payload } = await apiRequest('POST', '/api/v1/runs/submit', {
     body: validSubmitPayload()
@@ -163,7 +170,7 @@ test('POST /api/v1/runs/submit accepts a valid submission and returns an authori
 
   assert.equal(response.status, 201);
   assert.equal(payload.status, 'verified');
-  assert.equal(payload.leaderboardEligible, false);
+  assert.equal(payload.leaderboardEligible, true);
   assert.equal(typeof payload.result.harvestScore, 'number');
   assert.equal(payload.reviewNeeded, false);
   assert.deepEqual(payload.anomalyFlags, []);
@@ -286,6 +293,14 @@ test('POST /api/v1/runs/submit flags and rejects obvious extreme values', async 
     createdAt: new Date('2026-04-08T08:15:00.000Z'),
     updatedAt: new Date('2026-04-08T08:15:05.000Z')
   }));
+  mock.method(LeaderboardEntry, 'findOne', async () => null);
+  mock.method(LeaderboardEntry, 'create', async () => {
+    throw new Error('leaderboard entries must not be created for rejected runs');
+  });
+  mock.method(LeaderboardEntry, 'find', () => ({
+    lean: async () => []
+  }));
+  mock.method(LeaderboardEntry, 'updateOne', async () => ({ acknowledged: true }));
 
   const payload = validSubmitPayload();
   payload.clientSummary.harvest.totalYield = 2000001;

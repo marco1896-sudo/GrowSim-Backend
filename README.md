@@ -24,6 +24,12 @@ Dieser Ordner ist bereits fuer die Auslagerung in ein separates Repo vorbereitet
   - `POST /api/v1/run-sessions`
   - `POST /api/v1/runs/submit`
   - `GET /api/v1/runs/:submissionId`
+  - `GET /api/v1/leaderboards?scope=weekly&category=overall|quality`
+  - `GET /api/v1/leaderboards/around-me?scope=weekly&category=overall|quality`
+  - `GET /api/v1/leaderboards/me?scope=weekly&category=overall|quality`
+  - `GET /api/v1/rewards`
+  - `GET /api/v1/rewards/summary`
+  - `POST /api/v1/rewards/:grantId/claim`
 - Internes Admin-System:
   - `GET /admin` (Dashboard, nur Admin)
   - `GET /admin/users`, `PATCH /admin/users/:id/*`
@@ -46,12 +52,17 @@ Aktuell implementiert:
 - Verification-Status: `submitted`, `provisional`, `verified`, `rejected`, `under_review`
 - Authoritative Harvest-Scores fuer `harvestScore`, `yieldScore`, `qualityScore`, `stabilityScore`, `efficiencyScore`, `challengeScore`
 - Konsistente Fehlercodes fuer Harvest-Requests
+- Leaderboard V1 als verified-only, weekly-only, read-only Ranglistenbasis
+- Kategorien `overall` und `quality`
+- `around-me` und `me` auf Basis materialisierter verified Weekly-Entries
+- Rewards V1 als verified-only weekly grants mit idempotentem Claim
+- Inventory-Grundlage fuer Badges, Titles, Cosmetics, Seed Packs und kleine Premium-Currency
 
 Bewusst noch nicht implementiert:
-- Leaderboards
-- Rewards
-- Seasons
+- Seasons jenseits des einfachen Weekly-Scopes
 - Social/Friends-Features
+- Hall of Fame
+- Shop/Wirtschaftsausbau
 
 ## Standalone Repo Transfer
 

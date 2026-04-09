@@ -432,6 +432,71 @@ Response:
 - shop or broad economy systems
 - pay-to-win mechanics
 
+## Push API
+
+Web Push uses VAPID (`web-push`) and stores subscriptions per user/device.
+Invalid endpoints are auto-removed during delivery (`404/410` and similar invalid-token responses).
+
+### GET `/api/push/public-key`
+
+Returns the server VAPID public key for the frontend service worker setup.
+No auth required.
+
+Response:
+
+```json
+{
+  "publicKey": "BEl...your_public_vapid_key..."
+}
+```
+
+### POST `/api/push/subscribe`
+
+Requires auth.
+Stores or updates the subscription for the current user.
+Supports body as either direct subscription object or wrapped in `{ "subscription": { ... } }`.
+
+Example body:
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/abc123",
+  "keys": {
+    "p256dh": "BC...",
+    "auth": "xy..."
+  }
+}
+```
+
+### POST `/api/push/unsubscribe`
+
+Requires auth.
+Removes current user's subscription by `endpoint`.
+
+Body:
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/abc123"
+}
+```
+
+### POST `/api/push/test`
+
+Requires auth.
+Sends a test notification to all subscriptions of the current user.
+Optional custom payload in `payload`.
+
+Default payload fields:
+- `title`
+- `body`
+- `icon`
+- `badge`
+- `tag`
+- `url`
+- `type`
+- `data`
+
 ## Admin (internal)
 
 Admin endpoints require an authenticated user with `role=admin`.

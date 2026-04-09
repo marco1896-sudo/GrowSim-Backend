@@ -79,6 +79,9 @@ export const env = {
   jwtSecret,
   jwtExpiresIn: readString('JWT_EXPIRES_IN', { defaultValue: '7d' }),
   mongodbUri: readString('MONGODB_URI', { required: true }),
+  vapidPublicKey: readString('VAPID_PUBLIC_KEY', { defaultValue: '' }),
+  vapidPrivateKey: readString('VAPID_PRIVATE_KEY', { defaultValue: '' }),
+  vapidSubject: readString('VAPID_SUBJECT', { defaultValue: '' }),
   corsOrigins: readList('CORS_ORIGINS'),
   corsAllowCredentials: readBoolean('CORS_ALLOW_CREDENTIALS', false),
   shutdownTimeoutMs: readNumber('SHUTDOWN_TIMEOUT_MS', { defaultValue: 10000, min: 1000, max: 120000 })

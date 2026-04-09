@@ -12,6 +12,7 @@ import saveRoutes from './routes/saveRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import v1Routes from './routes/v1Routes.js';
+import pushRoutes from './routes/pushRoutes.js';
 import { requestContext } from './middleware/requestContext.js';
 import { applyPwaEntryCachePolicy, applyStaticCachePolicy } from './middleware/cachePolicy.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -80,6 +81,7 @@ app.use('/admin-static', express.static(path.join(__dirname, 'public'), staticMi
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/save', saveRoutes);
+app.use('/api/push', pushRoutes);
 app.use('/api/v1', v1Routes);
 app.use('/admin', adminRoutes);
 

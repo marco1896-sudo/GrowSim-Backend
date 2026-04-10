@@ -1,6 +1,6 @@
 import { PushSubscription } from '../models/PushSubscription.js';
 import { logger } from '../config/logger.js';
-import { ensurePushConfigured, pushConfig, webpush } from '../config/push.js';
+import { ensurePushConfigured, ensurePushPublicKeyConfigured, pushConfig, webpush } from '../config/push.js';
 import { httpError } from '../utils/httpError.js';
 import { createGameplayPushPayload, normalizePushPayload } from './pushPayloadFactory.js';
 
@@ -119,7 +119,7 @@ export async function removeSubscriptionForUser({ userId, endpoint }) {
 }
 
 export function getPublicVapidKey() {
-  ensurePushConfigured();
+  ensurePushPublicKeyConfigured();
   return pushConfig.publicKey;
 }
 

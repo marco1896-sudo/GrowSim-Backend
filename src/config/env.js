@@ -82,6 +82,13 @@ export const env = {
   vapidPublicKey: readString('VAPID_PUBLIC_KEY', { defaultValue: '' }),
   vapidPrivateKey: readString('VAPID_PRIVATE_KEY', { defaultValue: '' }),
   vapidSubject: readString('VAPID_SUBJECT', { defaultValue: '' }),
+  gameplayPushSchedulerEnabled: readBoolean('GAMEPLAY_PUSH_SCHEDULER_ENABLED', true),
+  gameplayPushIntervalSeconds: readNumber('GAMEPLAY_PUSH_INTERVAL_SECONDS', { defaultValue: 300, min: 30, max: 3600 }),
+  gameplayPushBatchSize: readNumber('GAMEPLAY_PUSH_BATCH_SIZE', { defaultValue: 100, min: 1, max: 1000 }),
+  gameplayPushQuietHoursEnabled: readBoolean('GAMEPLAY_PUSH_QUIET_HOURS_ENABLED', true),
+  gameplayPushQuietHoursStart: readNumber('GAMEPLAY_PUSH_QUIET_HOURS_START', { defaultValue: 22, min: 0, max: 23 }),
+  gameplayPushQuietHoursEnd: readNumber('GAMEPLAY_PUSH_QUIET_HOURS_END', { defaultValue: 7, min: 0, max: 23 }),
+  gameplayPushQuietHoursTimezone: readString('GAMEPLAY_PUSH_QUIET_HOURS_TIMEZONE', { defaultValue: 'UTC' }),
   corsOrigins: readList('CORS_ORIGINS'),
   corsAllowCredentials: readBoolean('CORS_ALLOW_CREDENTIALS', false),
   shutdownTimeoutMs: readNumber('SHUTDOWN_TIMEOUT_MS', { defaultValue: 10000, min: 1000, max: 120000 })

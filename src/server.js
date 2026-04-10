@@ -2,9 +2,11 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { connectDb, disconnectDb } from './config/db.js';
+import { startGameplayPushScheduler } from './services/gameplayPushScheduler.js';
 
 let server;
 let shuttingDown = false;
+let stopGameplayPushScheduler = null;
 
 async function shutdown(signal) {
   if (shuttingDown) return;
@@ -24,6 +26,11 @@ async function shutdown(signal) {
       await new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       });
+    }
+
+    if (typeof stopGameplayPushScheduler === 'function') {
+      stopGameplayPushScheduler();
+      stopGameplayPushScheduler = null;
     }
 
     await disconnectDb();
@@ -46,6 +53,8 @@ async function bootstrap() {
       nodeEnv: env.nodeEnv
     });
   });
+
+  stopGameplayPushScheduler = startGameplayPushScheduler();
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
